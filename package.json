@@ -3,10 +3,15 @@
   "version": "0.0.1",
   "description": "Subscriber service to process payments orders. Focused on learning about publisher/subscriber pattern.",
   "main": "index.js",
+  "type": "commonjs",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "Guilherme S Araújo",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@azure/service-bus": "^7.9.3",
+    "dotenv": "^16.3.1"
+  }
 }

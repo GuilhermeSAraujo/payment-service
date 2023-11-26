@@ -1,117 +1,58 @@
-// const { ServiceBusClient } = require("@azure/service-bus");
+const {
+  EventHubConsumerClient,
+  earliestEventPosition,
+} = require("@azure/event-hubs");
+const postgres = require("postgres");
 
-// // connection string to your Service Bus namespace
-// const connectionString = "Endpoint=sb://handcrafted-marketplace.servicebus.windows.net/;SharedAccessKeyName=publisher;SharedAccessKey=NXM4L/ZAYl0lvTghrTnQxOoijaCUOXHVG+AEhJmZEqA=;EntityPath=payment-service"
+const sql = postgres({
+  host: "hmdatabase.postgres.database.azure.com:5432",
+  user: "hm_admin",
+  password: "Guilherme1234@",
+  database: "hmdb",
+  ssl: {
+    rejectUnauthorized: false,
+  },
+});
+require("dotenv").config();
 
-// // name of the queue
-// const queueName = "payment-service"
-
-// const messages = [
-// 	{ body: "Albert Einstein" },
-// 	{ body: "Werner Heisenberg" },
-// 	{ body: "Marie Curie" },
-// 	{ body: "Steven Hawking" },
-// 	{ body: "Isaac Newton" },
-// 	{ body: "Niels Bohr" },
-// 	{ body: "Michael Faraday" },
-// 	{ body: "Galileo Galilei" },
-// 	{ body: "Johannes Kepler" },
-// 	{ body: "Nikolaus Kopernikus" }
-// ];
-
-// async function main() {
-// 	// create a Service Bus client using the connection string to the Service Bus namespace
-// 	const sbClient = new ServiceBusClient(connectionString);
-
-// 	// createSender() can also be used to create a sender for a topic.
-// 	const sender = sbClient.createSender(queueName);
-
-// 	try {
-// 		// Tries to send all messages in a single batch.
-// 		// Will fail if the messages cannot fit in a batch.
-// 		// await sender.sendMessages(messages);
-
-// 		// create a batch object
-// 		let batch = await sender.createMessageBatch();
-// 		for (let i = 0; i < messages.length; i++) {
-// 			// for each message in the array
-
-// 			// try to add the message to the batch
-// 			if (!batch.tryAddMessage(messages[i])) {
-// 				// if it fails to add the message to the current batch
-// 				// send the current batch as it is full
-// 				await sender.sendMessages(batch);
-
-// 				// then, create a new batch
-// 				batch = await sender.createMessageBatch();
-
-// 				// now, add the message failed to be added to the previous batch to this batch
-// 				if (!batch.tryAddMessage(messages[i])) {
-// 					// if it still can't be added to the batch, the message is probably too big to fit in a batch
-// 					throw new Error("Message too big to fit in a batch");
-// 				}
-// 			}
-// 		}
-
-// 		// Send the last created batch of messages to the queue
-// 		await sender.sendMessages(batch);
-
-// 		console.log(`Sent a batch of messages to the queue: ${queueName}`);
-
-// 		// Close the sender
-// 		await sender.close();
-// 	} finally {
-// 		await sbClient.close();
-// 	}
-// }
-
-// // call the main function
-// main().catch((err) => {
-// 	console.log("Error occurred: ", err);
-// 	process.exit(1);
-// });
-
-
-
-const { delay, ServiceBusClient, ServiceBusMessage } = require("@azure/service-bus");
-
-// connection string to your Service Bus namespace
-const connectionString = "";
-
-// name of the queue
-const queueName = "payment-service"
+const connectionString =
+  "Endpoint=sb://handcrafted-marketplace.servicebus.windows.net/;SharedAccessKeyName=subscriber;SharedAccessKey=Bq1Rcg4ABIVI91PZJoHh2HuDKKp+Tzv/u+AEhJV8TrA=";
+const eventHubName = "payment-service";
+const consumerGroup = "consumer-group";
 
 async function main() {
-	// create a Service Bus client using the connection string to the Service Bus namespace
-	const sbClient = new ServiceBusClient(connectionString);
+  console.log(`Running receiveEvents sample`);
 
-	// createReceiver() can also be used to create a receiver for a subscription.
-	const receiver = sbClient.createReceiver(queueName);
+  const consumerClient = new EventHubConsumerClient(
+    consumerGroup,
+    connectionString,
+    eventHubName
+  );
 
-	// function to handle messages
-	const myMessageHandler = async (messageReceived) => {
-		console.log(`Received message: ${messageReceived.body}`);
-	};
+  consumerClient.subscribe(
+    {
+      processEvents: async (events, context) => {
+        for (const event of events) {
+			await new Promise(resolve => setTimeout(resolve, 10000));
+          const paymentData = event.body;
+          console.log("paymentData:", paymentData);
 
-	// function to handle any errors
-	const myErrorHandler = async (error) => {
-		console.log(error);
-	};
-
-	// subscribe and specify the message and error handlers
-	receiver.subscribe({
-		processMessage: myMessageHandler,
-		processError: myErrorHandler
-	});
-
-	// Waiting long enough before closing the sender to send messages
-	await delay(20000);
-
-	await receiver.close();
-	await sbClient.close();
+          const contaCorrenteIsValid = paymentData.contaCorrente.length === 6;
+          const agenciaIsValid = paymentData.agencia.length === 4;
+          if (contaCorrenteIsValid && agenciaIsValid) {
+            console.log("Pagamento aprovado!");
+            await sql`UPDATE pagamento SET status = 'APROVADO' WHERE id = ${paymentData.idPagamento} AND status = 'EM ANDAMENTO'`;
+          }
+        }
+      },
+      processError: async (err, context) => {
+        console.log(`Error on partition "${context.partitionId}": ${err}`);
+      },
+    },
+    { startPosition: earliestEventPosition }
+  );
 }
-// call the main function
-main().catch((err) => {
-	console.log("Error occurred: ", err);
-	process.exit(1);
+
+main().catch((error) => {
+  console.error("Error running sample:", error);
 });

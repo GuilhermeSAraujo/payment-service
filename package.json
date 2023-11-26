@@ -5,13 +5,16 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js"
   },
   "keywords": [],
   "author": "Guilherme S Araújo",
   "license": "ISC",
   "dependencies": {
+    "@azure/event-hubs": "^5.11.3",
+    "@azure/identity": "^4.0.0",
     "@azure/service-bus": "^7.9.3",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "postgres": "^3.4.3"
   }
 }

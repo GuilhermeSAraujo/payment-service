@@ -16,7 +16,7 @@ const sql = postgres({
 require("dotenv").config();
 
 const connectionString =
-  "Endpoint=sb://handcrafted-marketplace.servicebus.windows.net/;SharedAccessKeyName=subscriber;SharedAccessKey=Bq1Rcg4ABIVI91PZJoHh2HuDKKp+Tzv/u+AEhJV8TrA=";
+  "";
 const eventHubName = "payment-service";
 const consumerGroup = "consumer-group";
 
